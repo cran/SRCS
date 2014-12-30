@@ -1,0 +1,3 @@
+import(parallel)
+export(SRCSranks, SRCScomparison, animatedplot, singleplot)
+S3method(plot, SRCS)
