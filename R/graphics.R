@@ -86,18 +86,18 @@
 #'	# Example from a Machine Learning problem with noisy data
 #'	ranks = SRCSranks(ML1, params = c("Dataset", "Noise type", "Noise ratio"), 
 #' 	  target = "Algorithm", performance="Performance", maximize = TRUE, ncores = 2, 
-#'	  paired = TRUE);
+#'	  paired = TRUE, pairing.col = "Fold");
 #'	singleplot(ranks, yInner = "Noise type",
-#'    xInner = "Noise ratio", Algorithm = "C4.5", Dataset = "glass", 
-#'	  )
+#'    xInner = "Noise ratio", Algorithm = "C4.5", Dataset = "glass")
 #' 	plot(x = ranks, yOuter = "Dataset", xOuter = "Algorithm", yInner = "Noise type", 
 #'	  xInner = "Noise ratio", out.X.par = list(levels.lab.textpar = 
 #'	  list(col = "white"), levels.bg = "black", levels.border = "white"), 
 #'	  out.Y.par = list(levels.bg = "gray"), colorbar.axes.par = list(cex.axis = 0.8), 
 #'	  show.colorbar = TRUE)
-#'	SRCScomparison(ranks, "Algorithm", Dataset = "autos", `Noise type` = "ATT_GAUS", 
+#'	SRCScomparison(ranks, "Algorithm", Dataset = "automobile", `Noise type` = "ATT_GAUS", 
 #'	  `Noise ratio`= 10, pvalues = FALSE)
-#' @seealso \code{\link{text}, \link{par}, \link{axis}, \link{SRCSranks}, \link{animatedplot}, \link{singleplot}}.
+#' @seealso \code{\link{text}, \link{par}, \link{axis}, \link{SRCSranks}, \link{animatedplot}, \link{singleplot}},
+#' \link[RColorBrewer]{brewer.pal}, \link[colorspace]{RGB}
 plot.SRCS <- function(x, yOuter, xOuter, yInner, xInner, 
 											zInner = "rank",
 											out.Y.par = list(), 	out.X.par = list(),
@@ -622,6 +622,7 @@ plot.SRCS <- function(x, yOuter, xOuter, yInner, xInner,
 #' # The full dataset (20 MB) can be downloaded from 
 #' # http://decsai.ugr.es/~pjvi/SRCSfiles/MPBall.RData
 #' # (the average must still be computed before plotting, just as in the example above)
+#' # Check the script in http://decsai.ugr.es/~pjvi/SRCSfiles/DOPvideoScript.R
 #' }
 animatedplot <- function(x, filename, path.to.converter,
 											yOuter, xOuter, yInner, xInner, zInner,
@@ -688,10 +689,17 @@ animatedplot <- function(x, filename, path.to.converter,
 	# Delete the file to make sure it does not exist previously
 	unlink(filename);
 	# Compose the shell command 	
-	cmdstring = paste0(shQuote(path.to.converter), " -delay ",delay," -compress None -quality 100% ",filename,"*.png ", filename);	
+
 	# Now call ImageMagick
-	#shell(shQuote(cmdstring));	
-	shell(cmdstring);	
+	#shell(shQuote(cmdstring));
+	if(.Platform$OS.type == "windows"){
+		wincmdstring = paste0(shQuote(path.to.converter), " -delay ",delay," -compress None -quality 100% ",filename,"*.png ", filename);	
+		shell(wincmdstring);	
+	}
+	else{
+		unixcmdstring = paste0(path.to.converter, " -delay ",delay," -compress None -quality 100% ",filename,"*.png ", filename);
+		system(unixcmdstring);
+	}
 }
 
 # ___________________________________________________________________________

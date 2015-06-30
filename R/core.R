@@ -11,6 +11,7 @@
 #' @param performance Name of the column of \code{data} containing the repeated performance measurements. If given a vector of strings, 
 #'	then a separate ranking will be computed for each of the elements, and no p-values, mean or stdev columns will be returned, just the rankings together with the factors 
 #'	to indicate which problem configuration corresponds to the rank.
+#' @param pairing.col Name of the column which links together the paired samples, in case we have set \code{paired = TRUE}. Otherwise, this argument will be ignored.
 #' @param test The statistical test to be performed to compare the performance of every level of the target variable at each problem configuration. 
 #' @param fun Function performing a custom statistical test, if \code{test = "custom"}; otherwise, this argument is ignored. The function must receive exactly
 #'	two vectors (the first is a vector of real numbers and the second is a factor with the level to which each real number corresponds) 
@@ -47,7 +48,7 @@
 #'	because the level order does affect the way graphics are arranged in the plot.
 #' @seealso \code{\link{plot.SRCS}} for a full working example of \code{SRCSranks} and plotting facilities. Also 
 #'	\code{\link{pairwise.wilcox.test}}, \code{\link{t.test}}, \code{\link{pairwise.t.test}}, \code{\link{TukeyHSD}}, \code{\link{p.adjust.methods}}
-SRCSranks <- function(data, params, target, performance, test = c("wilcoxon", "t", "tukeyHSD", "custom"), fun = NULL, correction = p.adjust.methods, 
+SRCSranks <- function(data, params, target, performance, pairing.col = NULL, test = c("wilcoxon", "t", "tukeyHSD", "custom"), fun = NULL, correction = p.adjust.methods, 
 					alpha = 0.05, maximize = TRUE, ncores = 1, paired = FALSE, ...){
 
 	test = match.arg(test);
@@ -56,7 +57,7 @@ SRCSranks <- function(data, params, target, performance, test = c("wilcoxon", "t
 	colNames = names(data);
 	discarded.names = colNames[!(colNames %in% c(params, target))];
 	nrows = length(data);
-	param.list = c(params, target, performance);  
+	param.list = c(params, target, performance, pairing.col);
 	for(param in param.list){
 		if(!is.null(param)){
 			if(sum(param %in% colNames) < length(param)){
@@ -68,14 +69,18 @@ SRCSranks <- function(data, params, target, performance, test = c("wilcoxon", "t
   if(is.null(target) || is.null(performance)){
 		stop("ERROR: the target column and the performance column cannot be null");
   }
+  
+  if(paired == TRUE && is.null(pairing.col)){
+    stop("ERROR: a pairing column must always be indicated when setting paired = TRUE");
+  }
     
   # ------------------------------------
   ## CHECK ALL COLUMNS ARE FACTORS
   # ------------------------------------
-  for(param in c(params,target)){
-    if(!is.null(param) && !is.factor(data[param])){	
+  for(param in c(params,target,pairing.col)){
+    if(!is.null(param) && !is.factor(data[[param]])){	
         # warning("column ",param, " had to be converted into a factor"); 
-        data[param] = as.factor(data[,param]); 
+        data[[param]] = as.factor(data[[param]]); 
     }
   }
   
@@ -84,8 +89,12 @@ SRCSranks <- function(data, params, target, performance, test = c("wilcoxon", "t
   tempData = data[,(colNames %in% params)];  
   chunked.frames = split(data, tempData, drop = TRUE);
 
-  ## Compose the arguments to either lapply or parLapply applied to chunked.frames
+  ## Compose the arguments to either lapply or parLapply applied to chunked.frames  
   arglist = list(X = chunked.frames, FUN = function(chframe){
+      if(paired == TRUE){
+        myorder = order(chframe[[target]], chframe[[pairing.col]]);
+        chframe = chframe[myorder,];
+      }
 			if(length(performance) == 1){ 
 																		rankList = .rank(chframe[[performance]], group = chframe[[target]], test = test, fun = fun, correction = correction, 
 																										alpha = alpha, maximize = maximize, paired = paired, ...); 
